@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>CompilEEEN</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/night.css">
+        <link rel="stylesheet" href="resources/pres.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-background-iframe="resources/webgl.html">
+                    <img class="no-background" src="resources/compileeen.png">
+                    <h5>An LLVM port of MIPL that runs natively</h5>
+                    <p><small>Ben Giles - CS5500 Compilers</small></p>
+                </section>
+				<section data-background-color="#7C7351">
+                    <h3 style="text-align: left;">What is it?</h3>
+                    <p style="text-align: left;">What if MIPL used the LLVM project (Clang) to compile source directly to native machine code?</p>
+                    <ul>
+                        <li class="fragment fade">Modify Bison to create an LLVM abstract syntax tree</li>
+                        <li class="fragment fade">Utilize target independent optimization and LLVM int-code generation</li>
+                        <li class="fragment fade">Add new MIPL language features more easily</li>
+                        <li class="fragment fade">Extern some C and C++ functions</li>
+                        <li class="fragment fade">Compile real, executable x86/amd64 programs!</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3 style="text-align: left;">Flowchart</h3>
+					<img src="resources/flowchart.png">
+                </section>
+                <section data-background-color="#2B5A7C">
+                    <h3 style="text-align: left;">How?</h3>
+                    <ol>
+                        <li class="fragment fade">Copy HW3, strip all functions, rewrite yyinput but keep semantic analysis</li>
+                        <li class="fragment fade">Wrap Flex and Bison in CMake, create build system</li>
+                        <li class="fragment fade">Modify Bison to create an AST for LLVM</li>
+                        <li class="fragment fade">Prepare blocks, procedure calls, statements for LLVM Int Generation</li>
+                        <li class="fragment fade">LLVM does code optimization and the actual "compilation" itself</li>
+                    </ol>
+                </section>
+                <section>
+                    <h5 style="text-align: left">When compiling the compiler:</h5>
+                    <p style="text-align: left"><code data-noescape data-trim>
+                        sudo apt install llvm-dev flex bison<br/>
+                        git clone https://github.com/bdgmb2/compileeen.git<br/>
+                        cd compileeen && mkdir build && cd build<br/>
+                        cmake ..<br/>
+                        make && sudo make install<br/>
+                        compileen example.mipl -o example<br/>
+                        ./example
+                    </code></p>
+                </section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				],
+                overview: false,
+                controls: false
+			});
+		</script>
+	</body>
+</html>

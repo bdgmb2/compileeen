@@ -1,0 +1,14 @@
+p, li {
+    font-size: 28px !important;
+}
+
+img {
+    padding: 20px !important;
+    background: rgba(255, 255, 255, 0.3) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.no-background {
+    background: none !important;
+}
