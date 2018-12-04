@@ -57,6 +57,8 @@ struct ParseObj {
     static std::stack<SYMBOL_TABLE> scopeStack;     // stack of scope hashtables
     static std::list<std::string> variableNames;		    // list of declared variables
     static int lineNum;
+
+    static FILE* inputFile;
 };
 
 #endif //MIPLNATIVE_PARSEFUNC_H

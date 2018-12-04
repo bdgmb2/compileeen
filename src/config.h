@@ -10,11 +10,19 @@
    Benjamin Giles, CS5500
 */
 
-#ifndef MIPLNATIVE_FLAGS_H
-#define MIPLNATIVE_FLAGS_H
+#ifndef MIPLNATIVE_CONFIG_H
+#define MIPLNATIVE_CONFIG_H
 
-#define OUTPUT_TOKENS	        0
-#define OUTPUT_PRODUCTIONS      0
-#define OUTPUT_ST_MGT           0
+#include <string>
+#include <llvm/Support/Host.h>
 
-#endif //MIPLNATIVE_FLAGS_H
+struct GlobalConfig {
+    static bool lexerVerbose, parserVerbose, ILVerbose;
+    static bool printIL;
+    static std::string targetArch;
+    static std::string outputName;
+
+    static void printHelp();
+};
+
+#endif //MIPLNATIVE_CONFIG_H

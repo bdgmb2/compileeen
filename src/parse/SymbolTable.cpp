@@ -10,7 +10,7 @@
    Benjamin Giles, CS5500
 */
 
-#include "SymbolTable.h"
+#include "parse/SymbolTable.h"
 
 bool SYMBOL_TABLE::addEntry(SYMBOL_TABLE_ENTRY x) {
     // Make sure there isn't already an entry with the same name

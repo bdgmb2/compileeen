@@ -12,17 +12,20 @@
 
 #include "parsefunctions.h"
 #include "gen-lexer.h"
-#include "flags.h"
+#include "config.h"
+#include <iostream>
 #include <cstring>
 #include <stack>
 #include <list>
 
 int ParseObj::lineNum = 1;
+FILE* ParseObj::inputFile;
 std::stack<SYMBOL_TABLE> ParseObj::scopeStack;
 std::list<std::string> ParseObj::variableNames;
 
 char ParseFunctions::getNextCharacter() {
-    return getchar();
+    return fgetc(ParseObj::inputFile);
+    //return getchar();
 }
 
 int ParseFunctions::checkInteger(char* text) {
@@ -77,26 +80,23 @@ TYPE_INFO ParseFunctions::findEntryInAnyScope(const std::string & theName) {
 }
 
 void ParseFunctions::printTokenInfo(const char* tokenType, const char* lexeme) {
-    if (OUTPUT_TOKENS)
-        printf("TOKEN: %-15s  LEXEME: %s\n", tokenType, lexeme);
+    if (GlobalConfig::lexerVerbose)
+        std::cout << "TOKEN: " << tokenType << " LEXEME: " << lexeme << std::endl;
 }
 
-void ParseFunctions::beginScope()
-{
+void ParseFunctions::beginScope() {
     ParseObj::scopeStack.push(SYMBOL_TABLE());
-    if (OUTPUT_ST_MGT)
-        printf("\n___Entering new scope...\n\n");
+    if (GlobalConfig::parserVerbose)
+        std::cout << "\n___Entering new scope...\n" << std::endl;
 }
 
-void ParseFunctions::endScope()
-{
+void ParseFunctions::endScope() {
     ParseObj::scopeStack.pop();
-    if (OUTPUT_ST_MGT)
-        printf("\n___Exiting scope...\n\n");
+    if (GlobalConfig::parserVerbose)
+        std::cout << "\n___Exiting scope...\n" << std::endl;
 }
 
-void ParseFunctions::cleanUp()
-{
+void ParseFunctions::cleanUp() {
     if (ParseObj::scopeStack.empty())
         return;
     else {
@@ -106,23 +106,23 @@ void ParseFunctions::cleanUp()
 }
 
 void ParseFunctions::printRule(const char *lhs, const char *rhs) {
-    if (OUTPUT_PRODUCTIONS)
-        printf("%s -> %s\n", lhs, rhs);
+    if (GlobalConfig::parserVerbose)
+        std::cout << lhs << " -> " << rhs << std::endl;
 }
 
 void ParseFunctions::throwError(const int errMessageNum) {
     printf("Line %d: %s\n", ParseObj::lineNum, ERR_MSG[errMessageNum]);
     ParseFunctions::cleanUp();
-    exit(1);
+    exit(3);
 }
 void ParseFunctions::throwError(const char *message) {
     printf("Line %d: %s\n", ParseObj::lineNum, message);
     ParseFunctions::cleanUp();
-    exit(1);
+    exit(3);
 }
 
 void ParseFunctions::printSymbolTableAddition(const std::string & identName, const TYPE_INFO* typeInfo) {
-    if (OUTPUT_ST_MGT)
+    if (GlobalConfig::parserVerbose)
     {
         char *cstr = new char[identName.length() + 1];
         strcpy(cstr, identName.c_str());

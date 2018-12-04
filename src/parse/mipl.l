@@ -15,8 +15,9 @@
  *	Constant definitions are now in leopoldj.y
  */
 %{
-    #include "parsefunctions.h"
+    #include "parse/parsefunctions.h"
     #include "gen-parser.h"
+    #include "config.h"
 %}
 
 /*

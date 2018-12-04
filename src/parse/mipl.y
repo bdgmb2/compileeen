@@ -19,9 +19,9 @@
 #include <cstring>
 #include <stack>
 #include <list>
-#include "SymbolTable.h"
+#include "parse/SymbolTable.h"
+#include "parse/parsefunctions.h"
 #include "gen-lexer.h"
-#include "parsefunctions.h"
 
 using std::string;
 
