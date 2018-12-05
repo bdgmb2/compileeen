@@ -17,6 +17,7 @@
 #define MAX_INT	"2147483647"
 
 #include "SymbolTable.h"
+#include <llvm/IR/Module.h>
 #include <string>
 #include <stack>
 #include <list>
@@ -59,6 +60,7 @@ struct ParseObj {
     static int lineNum;
 
     static FILE* inputFile;
+    static std::stack<llvm::Value*> valStack;
 };
 
 #endif //MIPLNATIVE_PARSEFUNC_H

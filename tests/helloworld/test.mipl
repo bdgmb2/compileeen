@@ -1,0 +1,4 @@
+program example;
+begin
+  write('H','e','l','l','o',' ','W','o','r','l','d','!','\n')
+end.

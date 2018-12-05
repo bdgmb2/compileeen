@@ -14,6 +14,7 @@
 #define MIPLNATIVE_ILGEN_H
 
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
@@ -28,6 +29,7 @@ struct LLVMGen {
     static std::map<std::string, llvm::Value*> namedVals;
 
     static void setupTargetSystems();
+    static llvm::Value* createAlloc(llvm::Function* theFunc, unsigned int type, std::string & varName);
 };
 
 #endif //MIPLNATIVE_ILGEN_H

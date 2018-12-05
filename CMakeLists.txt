@@ -21,8 +21,18 @@ find_package(LLVM REQUIRED CONFIG)
 MESSAGE(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
+# LLVM_MAP_COMPONENTS_TO_LIBNAMES(LLVM_LIBS lld)
+
+# TESTING
+ENABLE_TESTING()
+FILE(GLOB CHILDREN RELATIVE ${CMAKE_SOURCE_DIR}/tests ${CMAKE_SOURCE_DIR}/tests/*)
+FOREACH(CHILD ${CHILDREN})
+    IF(IS_DIRECTORY ${CMAKE_SOURCE_DIR}/tests/${CHILD})
+        ADD_TEST(NAME ${CHILD} COMMAND ${CMAKE_SOURCE_DIR}/tests/run.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tests/${CHILD})
+    ENDIF()
+ENDFOREACH()
 
 # COMPILER
 file(GLOB_RECURSE SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
-add_executable(CompilEEEN ${SRCS} ${BISON_MIPLParser_OUTPUTS} ${FLEX_MIPLLexer_OUTPUTS} src/ilgen/ilgen.h src/ilgen/ilgen.cpp src/config.cpp)
-target_link_libraries(CompilEEEN "-lLLVM-6.0 -lz -lpthread")
+add_executable(CompilEEEN ${SRCS} ${BISON_MIPLParser_OUTPUTS} ${FLEX_MIPLLexer_OUTPUTS})
+target_link_libraries(CompilEEEN "-lLLVM-6.0")

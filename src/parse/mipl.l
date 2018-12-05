@@ -45,7 +45,7 @@ INVALINT		0*{COUNT_DIGIT}{DIGIT}*
 
 IDENT			({UNDERSCORE}|{ALPHA})({ALPHANUM}|{UNDERSCORE})*
 
-CHARCONST		{QUOTE}.{QUOTE}
+CHARCONST		({QUOTE}.{QUOTE})|({QUOTE}\\[t,n]{QUOTE})
 BADCHARCONST	{QUOTE}|{QUOTE}{QUOTE}
 
 /*
@@ -261,7 +261,7 @@ BADCHARCONST	{QUOTE}|{QUOTE}{QUOTE}
 			}
 {CHARCONST}	{
 				ParseFunctions::printTokenInfo("T_CHARCONST", yytext);
-                      yylval.ch = yytext[1];
+                      yylval.text = strdup(yytext);
 				return T_CHARCONST;
 			}
 {NEWLINE}   	{

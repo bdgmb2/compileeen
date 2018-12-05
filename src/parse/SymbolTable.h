@@ -16,10 +16,12 @@
 
 #include <map>
 #include <string>
+#include <memory>
+#include <llvm/IR/Value.h>
 
 #define UNDEFINED  			-1   // Type codes
 #define PROCEDURE			0
-#define INT				1
+#define INT				    1
 #define CHAR				2
 #define INT_OR_CHAR			3
 #define BOOL				4
@@ -37,6 +39,7 @@ typedef struct {
     int startIndex;  // if array, starting index
     int endIndex;    //           ending index
     int baseType;    //           base type (one of above codes)
+    llvm::Value* val;      // LLVM value (if applicable)
 } TYPE_INFO;
 
 class SYMBOL_TABLE_ENTRY {
@@ -53,15 +56,17 @@ public:
         typeInfo.startIndex = UNDEFINED;
         typeInfo.endIndex = UNDEFINED;
         typeInfo.baseType = UNDEFINED;
+        typeInfo.val = nullptr;
     }
 
     SYMBOL_TABLE_ENTRY(const std::string theName, const int theType, const int theStart, const int theEnd,
-        const int theBaseType) {
+        const int theBaseType, llvm::Value* theVal) {
         name = theName;
         typeInfo.type = theType;
         typeInfo.startIndex = theStart;
         typeInfo.endIndex = theEnd;
         typeInfo.baseType = theBaseType;
+        typeInfo.val = theVal;
     }
 
     SYMBOL_TABLE_ENTRY(const std::string theName, const TYPE_INFO info) {
@@ -70,6 +75,7 @@ public:
         typeInfo.startIndex = info.startIndex;
         typeInfo.endIndex = info.endIndex;
         typeInfo.baseType = info.baseType;
+        typeInfo.val = info.val;
     }
 
     // Accessors
@@ -79,12 +85,14 @@ public:
     int getStartIndex() const;
     int getEndIndex() const;
     int getBaseType() const;
+    llvm::Value* getVal() const;
 };
 
 
 class SYMBOL_TABLE {
 private:
   std::map<std::string, SYMBOL_TABLE_ENTRY> hashTable;
+  llvm::Function* funcDef;
 
 public:
 
@@ -99,6 +107,8 @@ public:
   // info; otherwise, return token info with type UNDEFINED.
   TYPE_INFO findEntry(const std::string & theName);
 
+  void setScopeFunction(llvm::Function* theFunc);
+  llvm::Function* getScopeFunction() const;
 };
 
 #endif  // SYMBOL_TABLE_H

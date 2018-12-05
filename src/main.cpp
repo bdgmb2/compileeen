@@ -13,7 +13,11 @@
 #include <iostream>
 #include <cstring>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/Support/TargetRegistry.h>
+#include <llvm/Support/raw_os_ostream.h>
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include "config.h"
@@ -21,6 +25,7 @@
 #include "gen-parser.h"
 #include "gen-lexer.h"
 #include "ilgen/ilgen.h"
+#include "ilgen/support.h"
 
 int main(int argc, char* argv[]) {
     std::string input = "";
@@ -66,8 +71,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Generate LLVM IR output module
-    LLVMGen::module = llvm::make_unique<llvm::Module>("MIPL", LLVMGen::context);
-    LLVMGen::module->setTargetTriple(GlobalConfig::targetArch);
+    LLVMGen::module = llvm::make_unique<llvm::Module>(input, LLVMGen::context);
+    PrintSupport::init();
 
     // loop as long as there is anything to parse
     ParseObj::inputFile = fopen(input.c_str(), "r");
@@ -78,10 +83,37 @@ int main(int argc, char* argv[]) {
     } while (!feof(ParseObj::inputFile));
     fclose(ParseObj::inputFile);
 
-    llvm::TargetOptions opt;
-    auto TargetMachine = targetDef->createTargetMachine(GlobalConfig::targetArch, "generic", "", opt, llvm::Optional<llvm::Reloc::Model>());
-    LLVMGen::module->setDataLayout(TargetMachine->createDataLayout());
-
     ParseFunctions::cleanUp();
+
+    // Generate machine code to file or printout
+    LLVMGen::module->setTargetTriple(GlobalConfig::targetArch);
+    if (GlobalConfig::printIL) {
+        LLVMGen::module->print(llvm::outs(), nullptr);
+    } else {
+        // Set LLVM target options and configure
+        llvm::TargetOptions opt;
+        auto RM = llvm::Optional<llvm::Reloc::Model>();
+        auto TargetMachine = targetDef->createTargetMachine(GlobalConfig::targetArch, "generic", "", opt, RM);
+        LLVMGen::module->setDataLayout(TargetMachine->createDataLayout());
+
+        // Write out to file
+        std::error_code fileOutErr;
+        llvm::raw_fd_ostream outputFile(GlobalConfig::outputName + ".tmp", fileOutErr, llvm::sys::fs::F_None);
+        if (fileOutErr) { std::cout << "Fatal error: " << fileOutErr.message() << std::endl; return 3; }
+        llvm::legacy::PassManager pass;
+        if (TargetMachine->addPassesToEmitFile(pass, outputFile, llvm::TargetMachine::CGFT_ObjectFile))
+        { std::cout << "Fatal error: CompilEEEN cannot emit an object file with this architecture." << std::endl; return 4; }
+        pass.run(*LLVMGen::module);
+        outputFile.flush();
+        outputFile.close();
+
+        // Now that the file is generated, we need to link it to create an executable. I found out recently that this
+        // is a giant pain without a flagship compiler like GCC or Clang, so we find either one of those and use that.
+        // We're gonna make a WILD assumption that this is a UNIX-like system and either gcc or clang is in "/usr/bin"
+        std::string command = std::string("/usr/bin/clang ") + GlobalConfig::outputName + std::string(".tmp -o ") + GlobalConfig::outputName;
+        system(command.c_str());
+        system((std::string("rm ") + GlobalConfig::outputName + ".tmp").c_str());
+    }
+
     return 0;
 }

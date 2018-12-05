@@ -13,6 +13,7 @@
 #include "parsefunctions.h"
 #include "gen-lexer.h"
 #include "config.h"
+#include <llvm/IR/Module.h>
 #include <iostream>
 #include <cstring>
 #include <stack>
@@ -20,6 +21,7 @@
 
 int ParseObj::lineNum = 1;
 FILE* ParseObj::inputFile;
+std::stack<llvm::Value*> ParseObj::valStack;
 std::stack<SYMBOL_TABLE> ParseObj::scopeStack;
 std::list<std::string> ParseObj::variableNames;
 
