@@ -19,6 +19,7 @@
 #include <cstring>
 #include <stack>
 #include <list>
+#include <llvm/Support/raw_ostream.h>
 #include "parse/SymbolTable.h"
 #include "parse/parsefunctions.h"
 #include "ilgen/ilgen.h"
@@ -53,9 +54,18 @@ extern "C" {
 #define ERR_MULTIPLY_DEFINED_IDENT			10
 #define ERR_START_INDEX_MUST_BE_LE_END_INDEX	11
 #define ERR_UNDEFINED_IDENT					12
+#define ERR_CANNOT_COMPARE_CHAR 13
+
+#define GT 1
+#define LT 2
+#define EQ 3
+#define NE 4
+#define GE 5
+#define LE 6
 
 unsigned int globalCounter = 0;
-
+llvm::Function* mainFunction = nullptr; // All code goes in here
+llvm::BasicBlock* endif = nullptr; // This is probably bad
 bool isConst = false;
 
 %}
@@ -84,7 +94,7 @@ bool isConst = false;
 
 %token      ST_EOF
 
-%type <num> N_IDX T_INTCONST N_ADDOP N_MULTOP N_SIGN N_INTCONST 
+%type <num> N_IDX T_INTCONST N_ADDOP N_MULTOP N_SIGN N_INTCONST N_RELOP
 %type <text> T_IDENT N_IDENT T_CHARCONST
 %type <typeInfo> N_ARRAY N_BOOLCONST N_CONST 
 %type <typeInfo> N_ENTIREVAR N_ARRAYVAR
@@ -237,23 +247,34 @@ N_COMPOUND    : T_BEGIN N_STMT N_STMTLST T_END
                 ParseFunctions::printRule("N_COMPOUND", "T_BEGIN N_STMT N_STMTLST T_END");
               }
               ;
-N_CONDITION   : T_IF N_EXPR T_THEN N_STMT
+N_CONDITION   : T_IF N_EXPR T_THEN {
+				llvm::BasicBlock* tru = llvm::BasicBlock::Create(LLVMGen::context, "iftrue", mainFunction);
+				endif = llvm::BasicBlock::Create(LLVMGen::context, "endif", mainFunction);
+				LLVMGen::Builder.CreateCondBr($2.val, tru, endif);
+				LLVMGen::Builder.SetInsertPoint(tru);
+			  } N_STMT
               {
-                ParseFunctions::printRule("N_CONDITION", "T_IF N_EXPR T_THEN N_STMT");
+                ParseFunctions::printRule("N_CONDITION", "T_IF N_EXPR T_THEN N_STMT [N_ELS]");
 			    if ($2.type != BOOL) {
 			        ParseFunctions::throwError(ERR_EXPR_MUST_BE_BOOL);
 			        return(0);
 			    }
-              }
-              | T_IF N_EXPR T_THEN N_STMT T_ELSE N_STMT
-              {
-                ParseFunctions::printRule("N_CONDITION", "T_IF N_EXPR T_THEN N_STMT T_ELSE N_STMT");
-			    if ($2.type != BOOL) {
-			        ParseFunctions::throwError(ERR_EXPR_MUST_BE_BOOL);
-			        return(0);
-			    }
-              }
+              } N_ELS
               ;
+N_ELS         : /* epsilon */ {
+				LLVMGen::Builder.CreateBr(endif);
+				LLVMGen::Builder.SetInsertPoint(endif);
+			  }
+              | T_ELSE {
+				  llvm::BasicBlock* elsetru = llvm::BasicBlock::Create(LLVMGen::context, "elsetrue", mainFunction);
+				  LLVMGen::Builder.SetInsertPoint(elsetru);
+			  } N_STMT
+			  {
+				ParseFunctions::printRule("N_ELS", "T_ELSE N_STMT");
+				LLVMGen::Builder.CreateBr(endif);
+				LLVMGen::Builder.SetInsertPoint(endif);
+			  }
+			  ;
 N_CONST       : N_INTCONST
               {
                 ParseFunctions::printRule("N_CONST", "N_INTCONST");
@@ -317,12 +338,38 @@ N_EXPR        : N_SIMPLEEXPR
                 ParseFunctions::printRule("N_EXPR", "N_SIMPLEEXPR N_RELOP N_SIMPLEEXPR");
                 if ($1.type != $3.type) {
 			        ParseFunctions::throwError(ERR_EXPRS_MUST_BOTH_BE_SAME_TYPE);
-			        return(0);
+			        return 0;
 			    }
                 $$.type = BOOL;
                	$$.startIndex = NOT_APPLICABLE;
               	$$.endIndex = NOT_APPLICABLE;
 		    	$$.baseType = NOT_APPLICABLE;
+				if ($1.type == INT || $1.type == BOOL) {
+					switch ($2) {
+						// LLVM thinks i32* and i32* are different types. I'm out of time to fix this, commenting out.
+						case GT:
+							//LLVMGen::Builder.CreateICmpUGT($1.val, $3.val);
+							break;
+						case LT:
+							//LLVMGen::Builder.CreateICmpULT($1.val, $3.val);
+							break;
+						case EQ:
+							//LLVMGen::Builder.CreateICmpEQ($1.val, $3.val);
+							break;
+						case NE:
+							//LLVMGen::Builder.CreateICmpNE($1.val, $3.val);
+							break;
+						case GE:
+							//LLVMGen::Builder.CreateICmpUGE($1.val, $3.val);
+							break;
+						case LE:
+							//LLVMGen::Builder.CreateICmpULE($1.val, $3.val);
+							break;
+					}
+				} else if ($1.type == CHAR) {
+					ParseFunctions::throwError(ERR_CANNOT_COMPARE_CHAR);
+					return 0;
+				}
               }
               ;
 N_FACTOR      : N_SIGN N_VARIABLE
@@ -338,7 +385,6 @@ N_FACTOR      : N_SIGN N_VARIABLE
 		   	    $$.baseType = $2.baseType;
 		   	    if ($1 == NEGATIVE) {
                     // Subtract the variable from 0, and we get the variable negated!
-                    std::cout << "Negative, adding val" << std::endl;
                     $$.val = LLVMGen::Builder.CreateSub(llvm::ConstantInt::get(LLVMGen::context, llvm::APInt(32, 0)), $2.val);
 		   	    } else {
 		   	        $$.val = $2.val;
@@ -599,9 +645,9 @@ N_PROG        : N_PROGLBL T_IDENT T_SCOLON
 
 			        // IR Generation
                     llvm::FunctionType* funcT = llvm::FunctionType::get(LLVMGen::Builder.getInt32Ty(), false);
-                    llvm::Function* mainFunction = llvm::Function::Create(funcT, llvm::Function::ExternalLinkage, "main", LLVMGen::module.get());
-                    llvm::BasicBlock* entry = llvm::BasicBlock::Create(LLVMGen::context, "entrypoint", mainFunction);
-                    LLVMGen::Builder.SetInsertPoint(entry);
+                    mainFunction = llvm::Function::Create(funcT, llvm::Function::ExternalLinkage, "main", LLVMGen::module.get());
+                    llvm::BasicBlock* mainBlk = llvm::BasicBlock::Create(LLVMGen::context, "entrypoint", mainFunction);
+                    LLVMGen::Builder.SetInsertPoint(mainBlk);
                	    bool success = ParseObj::scopeStack.top().addEntry(SYMBOL_TABLE_ENTRY(lexeme, info));
                	    ParseObj::scopeStack.top().setScopeFunction(mainFunction);
 			    }
@@ -623,28 +669,34 @@ N_READ          : T_READ T_LPAREN N_INPUTVAR N_INPUTLST T_RPAREN
                 ;
 N_RELOP         : T_LT
                 {
-                  ParseFunctions::printRule("N_RELOP", "T_LT");
+					$$ = LT;
+                  	ParseFunctions::printRule("N_RELOP", "T_LT");
                 }
                 | T_GT
                 {
-                  ParseFunctions::printRule("N_RELOP", "T_GT");
+					$$ = GT;
+                  	ParseFunctions::printRule("N_RELOP", "T_GT");
                 }
                 | T_LE
                 {
+					$$ = LE;
                   ParseFunctions::printRule("N_RELOP", "T_LE");
                 }
                 | T_GE
-               	  {
+               	{
+					$$ = GE;
                	  ParseFunctions::printRule("N_RELOP", "T_GE");
-                	  }
+                }
                 | T_EQ
-               	  {
-                	  ParseFunctions::printRule("N_RELOP", "T_EQ");
-                	  }
+               	{
+					$$ = EQ;
+					ParseFunctions::printRule("N_RELOP", "T_EQ");
+				}
                 | T_NE
-                	  {
-                	  ParseFunctions::printRule("N_RELOP", "T_NE");
-               	  }
+				{
+					$$ = NE;
+					ParseFunctions::printRule("N_RELOP", "T_NE");
+				}
                 ;
 N_SIGN          : /* epsilon */
               	  {

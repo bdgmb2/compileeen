@@ -36,7 +36,8 @@ const Cstring ERR_MSG[] = {
         "Output expression must be of type integer or char",
         "Multiply defined identifier",
         "Start index must be less than or equal to end index of array",
-        "Undefined identifier"
+        "Undefined identifier",
+        "Cannot compare two characters"
 };
 
 struct ParseFunctions {

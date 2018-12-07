@@ -33,7 +33,7 @@ I seriously misunderestimated the scope of adding LLVM translation to the MIPL l
 
 Most development time went into getting a proper build system working, as I spent quite a bit of time changing the provided Flex and Bison files to be compatible with CMake (or any build system for that matter). Another obstacle was creating the actual executable - I soon found out that LLVM is a compiler infrastructure, **not** a linker. This is why Clang _must_ be installed to work, as compiled machine code output needs to be piped through Clang (or any linker, really) to produce an actual executable.
 
-The following MIPL constructs have been implemented. A question mark denotes a working construct under specific conditions. If these conditions are not met, undefined behavior (and a segfault) may occur. 
+The following MIPL constructs have been implemented. A question mark denotes a working construct under specific conditions. If these conditions are not met, the resulting program may not work as expected.
 | | |
 | --- | --- |
 | ✓ | Constant Variable Assignment |
@@ -42,7 +42,7 @@ The following MIPL constructs have been implemented. A question mark denotes a w
 | ✓ | Other C-supported extern calls |
 | ✓ | Variable-to-variable assignment |
 | ? | If Statements |
+| ? | Expression Arithmetic |
 | X | While Statements |
-| X | Expression Arithmetic |
 | X | Procedures |
 | X | MIPL Arrays |
