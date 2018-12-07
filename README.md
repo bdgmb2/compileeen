@@ -40,6 +40,7 @@ To compare CompilEEEN's LLVM output with a similar C++ program in Clang, run:
 `clang -S -emit-llvm input.cpp` to get a file named `input.ll` containing Clang-sourced LLVM
 
 The following MIPL constructs have been implemented. A question mark denotes a working construct under specific conditions. If these conditions are not met, the resulting program may not work as expected.
+
 | | |
 | --- | --- |
 | ✓ | Constant Variable Assignment |
