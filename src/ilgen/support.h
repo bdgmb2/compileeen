@@ -19,8 +19,8 @@
 #include <memory>
 
 struct PrintSupport {
-    static llvm::Function* printfProto;
-    static llvm::Constant *printChar, *printInt;
+    static llvm::Function *printfProto, *scanfProto;
+    static llvm::Constant *useChar, *useInt;
 
     static void init();
     static llvm::Constant* geti8StrVal(const std::string & str, llvm::Twine const& name);

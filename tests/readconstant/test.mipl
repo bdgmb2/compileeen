@@ -1,0 +1,8 @@
+program p;
+var x : integer;
+c : char;
+begin
+  read(x);
+  read(c);
+  write(x, ' ', c, '\n')
+end.

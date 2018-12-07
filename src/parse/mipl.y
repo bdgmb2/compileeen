@@ -56,6 +56,8 @@ extern "C" {
 
 unsigned int globalCounter = 0;
 
+bool isConst = false;
+
 %}
 
 %union {
@@ -191,9 +193,16 @@ N_ASSIGN      : N_VARIABLE T_ASSIGN N_EXPR
                     ParseFunctions::throwError(ERR_EXPR_MUST_BE_SAME_AS_VAR);
                	    return(0);
                 }
-                // The corresponding alloca
-                if ($3.val != nullptr)
+				if (isConst) {
+					// The corresponding alloca
+                	if ($3.val != nullptr)
                     LLVMGen::Builder.CreateStore($3.val, $1.val);
+					isConst = false;
+				} else {
+					llvm::Value* loaded = LLVMGen::Builder.CreateLoad(llvm::Type::getInt32Ty(LLVMGen::context), $3.val);
+					LLVMGen::Builder.CreateStore(loaded, $1.val);
+				}
+                
               }
               ;
 N_BLOCK       : N_VARDECPART N_PROCDECPART N_STMTPART
@@ -209,9 +218,8 @@ N_BOOLCONST   : T_TRUE
                 $$.startIndex = NOT_APPLICABLE;
 			    $$.endIndex = NOT_APPLICABLE;
 		   	    $$.baseType = NOT_APPLICABLE;
-		   	    std::cout << "booltrue" << std::endl;
 		   	    $$.val = llvm::ConstantInt::get(LLVMGen::context, llvm::APInt(8, 0));
-		   	    std::cout << "succ" << std::endl;
+				isConst = true;
               }
               | T_FALSE
               {
@@ -221,6 +229,7 @@ N_BOOLCONST   : T_TRUE
                 $$.endIndex = NOT_APPLICABLE;
 		        $$.baseType = NOT_APPLICABLE;
 		        $$.val = llvm::ConstantInt::get(LLVMGen::context, llvm::APInt(8, 1));
+				isConst = true;
               }
               ;
 N_COMPOUND    : T_BEGIN N_STMT N_STMTLST T_END
@@ -253,6 +262,7 @@ N_CONST       : N_INTCONST
               	$$.endIndex = NOT_APPLICABLE;
 		    	$$.baseType = NOT_APPLICABLE;
 		    	$$.val = llvm::ConstantInt::get(LLVMGen::context, llvm::APInt(32, $1));
+				isConst = true;
               }
               | T_CHARCONST
               {
@@ -269,6 +279,7 @@ N_CONST       : N_INTCONST
 		     	//$$.val = PrintSupport::geti8StrVal(tst, tst + std::to_string(globalCounter));
 		     	//globalCounter++
 		     	$$.val = llvm::ConstantInt::get(LLVMGen::context, llvm::APInt(8, static_cast<int>(tst[1])));
+				isConst = true;
               }
               | N_BOOLCONST
               {
@@ -288,8 +299,8 @@ N_ENTIREVAR   : N_VARIDENT
                 $$.endIndex = $1.endIndex;
                 $$.baseType = $1.baseType;
                 $$.val = $1.val;
-                std::cout << "Val is " << $$.val->getName().str() << std::endl;
-                std::cout << "Finished with EntireVar" << std::endl;
+                //std::cout << "Val is " << $$.val->getName().str() << std::endl;
+                //std::cout << "Finished with EntireVar" << std::endl;
               }
               ;
 N_EXPR        : N_SIMPLEEXPR
@@ -413,39 +424,38 @@ N_IDXVAR        : N_ARRAYVAR T_LBRACK N_EXPR T_RBRACK
 			  $$.baseType = NOT_APPLICABLE;
               	  }
                 ;
-N_INPUTLST      : /* epsilon */
-             	  {
-           	  ParseFunctions::printRule("N_INPUTLST", "epsilon");
-             	  }
-                | T_COMMA N_INPUTVAR N_INPUTLST
-            	  {
-             	  ParseFunctions::printRule("N_INPUTLST", 
-              	         "T_COMMA N_INPUTVAR N_INPUTLST");
-            	  }
-                ;
-N_INPUTVAR      : N_VARIABLE
-              	  {
-             	  ParseFunctions::printRule("N_INPUTVAR", "N_VARIABLE");
-			  if (($1.type != INT) && ($1.type != CHAR)) 
+N_INPUTLST    : /* epsilon */
 			  {
-             	    ParseFunctions::throwError(
-			      ERR_INPUT_VAR_MUST_BE_INT_OR_CHAR);
-              	    return(0);
-                	  }
-		   	  $$.type = $1.type; 
-                	  $$.startIndex = $1.startIndex;
-                	  $$.endIndex = $1.endIndex;
-		     	  $$.baseType = $1.baseType;
-             	  }
-                ;
-N_INTCONST      : N_SIGN T_INTCONST
-              	  {
-               	  ParseFunctions::printRule("N_INTCONST", "N_SIGN T_INTCONST");
-			  if ($1 == NO_SIGN)
-			    $$ = $2;
-			  else $$ = $1 * $2;
-               	  }
-                ;
+           	  	ParseFunctions::printRule("N_INPUTLST", "epsilon");
+			  }
+			  | T_COMMA N_INPUTVAR N_INPUTLST
+			  {
+				ParseFunctions::printRule("N_INPUTLST", "T_COMMA N_INPUTVAR N_INPUTLST");
+			  }
+              ;
+N_INPUTVAR    : N_VARIABLE
+			  {
+				ParseFunctions::printRule("N_INPUTVAR", "N_VARIABLE");
+			  	if (($1.type != INT) && ($1.type != CHAR)) {
+					ParseFunctions::throwError(ERR_INPUT_VAR_MUST_BE_INT_OR_CHAR);
+              	    return 0;
+				}
+				$$.type = $1.type; 
+				$$.startIndex = $1.startIndex;
+				$$.endIndex = $1.endIndex;
+				$$.baseType = $1.baseType;
+				llvm::ArrayRef<llvm::Value*> ref = { $1.type == CHAR ? PrintSupport::useChar : PrintSupport::useInt, LLVMGen::Builder.CreateIntToPtr($1.val, llvm::Type::getInt32PtrTy(LLVMGen::context)) };
+				LLVMGen::Builder.CreateCall(PrintSupport::scanfProto, ref, "readin");
+			  }
+			  ;
+N_INTCONST    : N_SIGN T_INTCONST
+              {
+                ParseFunctions::printRule("N_INTCONST", "N_SIGN T_INTCONST");
+			  	if ($1 == NO_SIGN)
+			    	$$ = $2;
+			  	else $$ = $1 * $2;
+			  }
+              ;
 N_MULTOP        : N_MULTOP_LOGICAL
              	  {
              	  ParseFunctions::printRule("N_MULTOP", "N_MULTOP_LOGICAL");
@@ -499,22 +509,27 @@ N_OUTPUT      : N_EXPR
               	    ParseFunctions::throwError(ERR_OUTPUT_VAR_MUST_BE_INT_OR_CHAR);
              	    return(0);
                 }
-                std::cout << "About to write call" << std::endl;
-                llvm::ArrayRef<llvm::Value*> ref = { $1.type == CHAR ? PrintSupport::printChar : PrintSupport::printInt, $1.val };
+				llvm::ArrayRef<llvm::Value*> ref;
+				if (isConst)
+					ref = { ($1.type == CHAR ? PrintSupport::useChar : PrintSupport::useInt), $1.val };
+				else {
+					llvm::Value* loaded = LLVMGen::Builder.CreateLoad(llvm::Type::getInt32Ty(LLVMGen::context), $1.val);
+					ref = { ($1.type == CHAR ? PrintSupport::useChar : PrintSupport::useInt), loaded };
+				}
+				isConst = false;
+				
                 LLVMGen::Builder.CreateCall(PrintSupport::printfProto, ref, "writeout");
-                std::cout << "Finished" << std::endl;
               }
               ;
-N_OUTPUTLST     : /* epsilon */
-              	  {
-              	  ParseFunctions::printRule("N_OUTPUTLST", "epsilon");
-               	  }
-                | T_COMMA N_OUTPUT N_OUTPUTLST
-             	  {
-              	  ParseFunctions::printRule("N_OUTPUTLST", 
-			         "T_COMMA N_OUTPUT N_OUTPUTLST");
-            	  }
-                ;
+N_OUTPUTLST   : /* epsilon */
+              {
+                ParseFunctions::printRule("N_OUTPUTLST", "epsilon");
+              }
+              | T_COMMA N_OUTPUT N_OUTPUTLST
+             	{
+            	ParseFunctions::printRule("N_OUTPUTLST", "T_COMMA N_OUTPUT N_OUTPUTLST");
+              }
+              ;
 N_PROCDEC       : N_PROCHDR N_BLOCK
              	  {
               	  ParseFunctions::printRule("N_PROCDEC", "N_PROCHDR N_BLOCK");
@@ -796,7 +811,7 @@ N_VARDECPART  : /* epsilon */
               ;
 N_VARIABLE    : N_ENTIREVAR
               {
-                std::cout << "At N_VARIABLE" << std::endl;
+                //std::cout << "At N_VARIABLE" << std::endl;
                 ParseFunctions::printRule("N_VARIABLE", "N_ENTIREVAR");
 			    $$.type = $1.type;
 			    $$.startIndex = $1.startIndex;

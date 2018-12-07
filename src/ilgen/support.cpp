@@ -19,9 +19,10 @@
 #include <iostream>
 #include <vector>
 
-llvm::Constant* PrintSupport::printChar = nullptr;
-llvm::Constant* PrintSupport::printInt = nullptr;
+llvm::Constant* PrintSupport::useChar = nullptr;
+llvm::Constant* PrintSupport::useInt = nullptr;
 llvm::Function* PrintSupport::printfProto = nullptr;
+llvm::Function* PrintSupport::scanfProto = nullptr;
 
 llvm::Function* constructPrintfProto() {
     std::vector<llvm::Type*> printf_arg_types;
@@ -33,10 +34,21 @@ llvm::Function* constructPrintfProto() {
     return func;
 }
 
+llvm::Function* constructScanfProto() {
+    std::vector<llvm::Type*> scanf_arg_types;
+    scanf_arg_types.push_back(llvm::Type::getInt8PtrTy(LLVMGen::context));
+
+    llvm::FunctionType* scanf_type = llvm::FunctionType::get(llvm::Type::getInt32Ty(LLVMGen::context), scanf_arg_types, true);
+    llvm::Function *func = llvm::Function::Create(scanf_type, llvm::Function::ExternalLinkage, llvm::Twine("scanf"), LLVMGen::module.get());
+    func->setCallingConv(llvm::CallingConv::C);
+    return func;
+}
+
 void PrintSupport::init() {
-    printChar = PrintSupport::geti8StrVal("%c", "printchar");
-    printInt = PrintSupport::geti8StrVal("%d", "printint");
+    useChar = PrintSupport::geti8StrVal("%c", "usechar");
+    useInt = PrintSupport::geti8StrVal("%d", "useint");
     printfProto = constructPrintfProto();
+    scanfProto = constructScanfProto();
 }
 
 llvm::Constant* PrintSupport::geti8StrVal(const std::string & str, llvm::Twine const& name) {

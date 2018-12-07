@@ -7,7 +7,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-./test > out.txt
+if [ -f input.txt ]; then
+    ./test < input.txt > out.txt
+else
+    ./test > out.txt
+fi
 diff -Z out.txt expected.txt
 retCode=$?
 rm test out.txt

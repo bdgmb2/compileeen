@@ -7,6 +7,6 @@ begin
   ch := 'A';
   b := false;
   y := -123;
-  x := y
+  x := y;
+  write(ch, y, x, '\n')
 end.
-
