@@ -6,7 +6,7 @@
    \____/\____/_/ /_/ /_/ .___/_/_/_____/_____/_____/_/ |_/
                        /_/
 ```
-A MIPL to x86-amd64 native compiler.
+A MIPL to any-arch native compiler.
 
 Ben Giles, CS5500 Compilers, Missouri S&T
 
@@ -18,20 +18,26 @@ Before cloning and compiling this project, you'll need:
 - Flex
 - Bison
 
-The following commands will configure and build the compiler:
+The following commands will configure and build the compiler for your host architecture:
 1. `mkdir build && cd build`
 2. `cmake ..`
 3. `make -j [num threads]`
 4. `./CompilEEEN file.mipl -o output_exec`
+
+To build for another architecture (such as armhf), use a CMake cross-compile toolchain file in conjunction with this project.
 
 To run tests, use `make test`. To view generated LLVM code, run `./CompilEEEN -p`. To see all compiler-supported options, run `./CompilEEEN --help`.
 
 ## Notes For Grader:
 This project _should_ work out of the box on any campus CSLinux machine. If it does not, contact me immediately at bdgmb2@mst.edu
 
-I seriously misunderestimated the scope of adding LLVM translation to the MIPL language when taking on this project, and as such only a few constructs work. Sometimes - under the correct circumstances - these constructs may cause the compiled program to signal a segmentation fault.
+I seriously misunderestimated the scope of adding LLVM translation to the MIPL language when taking on this project, and as such only a few constructs work. This project would have been better suited to take the entire semester.
 
-Most development time went into getting a proper build system working, as I spent quite a bit of time changing the provided Flex and Bison files to be compatible with CMake (or any build system for that matter). Another obstacle was creating the actual executable - I soon found out that LLVM is a compiler infrastructure, **not** a linker. This is why Clang _must_ be installed to work, as compiled machine code output needs to be piped through Clang (or any linker, really) to produce an actual executable.
+Most development time went into getting a proper build system working, as I spent quite a bit of time changing the provided Flex and Bison files to be compatible with CMake (or any build system for that matter). Another obstacle was creating the actual executable - I soon found out that LLVM is a compiler infrastructure, **not** a linker. This is why Clang _must_ be installed to work, as compiled machine code output needs to be piped through Clang (or any linker, really) to produce an actual executable. I considered using [LLD](https://lld.llvm.org/) (LLVM's own linker), but it is not documented at all and figured piping through Clang would be easier.
+
+To compare CompilEEEN's LLVM output with a similar C++ program in Clang, run:
+`./CompilEEEN -p input.mipl` to see a printout of the MIPL-sourced LLVM
+`clang -S -emit-llvm input.cpp` to get a file named `input.ll` containing Clang-sourced LLVM
 
 The following MIPL constructs have been implemented. A question mark denotes a working construct under specific conditions. If these conditions are not met, the resulting program may not work as expected.
 | | |
